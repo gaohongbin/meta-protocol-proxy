@@ -81,7 +81,9 @@ private:
                     const MetadataSharedPtr& response_metadata, int response_code,
                     const std::string& response_code_detail);
 
+  // 这里 decoder_filter_callbacks_ 传入的是 ActiveMessageDecoderFilter
   DecoderFilterCallbacks* decoder_filter_callbacks_{};
+  // 这里 encoder_filter_callbacks_ 传入的是 ActiveMessageEncoderFilter
   EncoderFilterCallbacks* encoder_filter_callbacks_{};
   Route::RouteConstSharedPtr route_{};
   const Route::RouteEntry* route_entry_{};

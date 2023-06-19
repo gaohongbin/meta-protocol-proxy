@@ -32,6 +32,7 @@ MetaProtocolProxy::DecodeStatus ThriftCodec::decode(Buffer::Instance& data,
       metadata_ = std::make_shared<ThriftProxy::MessageMetadata>();
     }
 
+    // 获取 frame size
     if (!transport_->decodeFrameStart(data, *metadata_)) {
       ENVOY_LOG(debug, "thrift: need more data for {} transport start", transport_->name());
       return MetaProtocolProxy::DecodeStatus::WaitForData;
@@ -68,6 +69,7 @@ MetaProtocolProxy::DecodeStatus ThriftCodec::decode(Buffer::Instance& data,
   ENVOY_LOG(debug, "thrift: protocol {}, state {}, {} bytes available", protocol_->name(),
             ProtocolStateNameValues::name(state_machine_->currentState()), data.length());
 
+  // 状态机来解码
   ProtocolState rv = state_machine_->run(data);
   if (rv == ProtocolState::WaitForData) {
     ENVOY_LOG(debug, "thrift: wait for data");
@@ -82,6 +84,7 @@ MetaProtocolProxy::DecodeStatus ThriftCodec::decode(Buffer::Instance& data,
     return DecodeStatus::WaitForData;
   }
 
+  // 将 metadata_ 的信息存储到 metadata 中。
   toMetadata(*metadata_, metadata);
   ENVOY_LOG(debug, "thrift: origin message length {}  ", metadata.originMessage().length());
 
@@ -172,13 +175,17 @@ void ThriftCodec::onError(const MetaProtocolProxy::Metadata& metadata,
 }
 
 void ThriftCodec::toMetadata(const ThriftProxy::MessageMetadata& msgMetadata, Metadata& metadata) {
+  // 存入 method
   if (msgMetadata.hasMethodName()) {
     metadata.putString("method", msgMetadata.methodName());
   }
+
+  // 存入 RequestId
   if (msgMetadata.hasSequenceId()) {
     metadata.setRequestId(msgMetadata.sequenceId());
   }
 
+  // 存入 MessageType
   ASSERT(msgMetadata.hasMessageType());
   switch (msgMetadata.messageType()) {
   case ThriftProxy::MessageType::Call: {
@@ -201,6 +208,7 @@ void ThriftCodec::toMetadata(const ThriftProxy::MessageMetadata& msgMetadata, Me
     PANIC("not reachec");
   }
 
+  // 将第三个参数的内容存入到第一个参数中，并且在第一个参数中，新增 size 字段。
   transport_->encodeFrame(metadata.originMessage(), msgMetadata, state_machine_->originalMessage());
 }
 

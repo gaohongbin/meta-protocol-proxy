@@ -35,6 +35,7 @@ FilterStatus Router::onMessageDecoded(MetadataSharedPtr request_metadata,
   ASSERT(messageType == MessageType::Request || messageType == MessageType::Stream_Init);
 
   request_metadata_ = request_metadata;
+  // 获取 route
   route_ = decoder_filter_callbacks_->route();
   if (!route_) {
     ENVOY_STREAM_LOG(debug, "meta protocol router: no cluster match for request '{}'",
@@ -105,6 +106,10 @@ FilterStatus Router::onMessageDecoded(MetadataSharedPtr request_metadata,
   }
 
   return filter_status;
+}
+
+void Router::setDecoderFilterCallbacks(DecoderFilterCallbacks& callbacks) {
+  decoder_filter_callbacks_ = &callbacks;
 }
 // ---- DecoderFilter ----
 
