@@ -107,10 +107,6 @@ FilterStatus Router::onMessageDecoded(MetadataSharedPtr request_metadata,
 
   return filter_status;
 }
-
-void Router::setDecoderFilterCallbacks(DecoderFilterCallbacks& callbacks) {
-  decoder_filter_callbacks_ = &callbacks;
-}
 // ---- DecoderFilter ----
 
 // ---- EncoderFilter ---- handle response path
