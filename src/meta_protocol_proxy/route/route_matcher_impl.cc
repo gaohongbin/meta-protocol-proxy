@@ -142,7 +142,7 @@ RouteEntryImpl::~RouteEntryImpl() = default;
 
 RouteConstSharedPtr RouteEntryImpl::matches(const Metadata& metadata, uint64_t random_value) const {
   if (!RouteEntryImplBase::headersMatch(metadata)) {
-    ENVOY_LOG(error, "meta protocol route matcher: headers not match");
+    // ENVOY_LOG(error, "meta protocol route matcher: headers not match");
     return nullptr;
   }
 
