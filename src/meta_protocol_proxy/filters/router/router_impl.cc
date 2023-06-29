@@ -69,7 +69,7 @@ FilterStatus Router::onMessageDecoded(MetadataSharedPtr request_metadata,
   auto& conn_pool_data = prepare_result.conn_pool_data.value();
   decoder_filter_callbacks_->streamInfo().setUpstreamClusterInfo(cluster_);
 
-  ENVOY_STREAM_LOG(debug, "meta protocol router: decoding request", *decoder_filter_callbacks_);
+  ENVOY_STREAM_LOG(debug, "meta protocol router: decoding request {}", *decoder_filter_callbacks_, request_metadata_->getRequestId());
 
   // if x-request-id is created, then it's the first span in this trace
   is_first_span_ = setXRequestID(request_metadata, request_mutation);

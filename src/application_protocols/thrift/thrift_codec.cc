@@ -86,12 +86,12 @@ MetaProtocolProxy::DecodeStatus ThriftCodec::decode(Buffer::Instance& data,
 
   // 将 metadata_ 的信息存储到 metadata 中。
   toMetadata(*metadata_, metadata);
-  ENVOY_LOG(debug, "thrift: origin message length {}  ", metadata.originMessage().length());
+  ENVOY_LOG(debug, "request sequenceId={}, thrift: origin message length {} ", metadata.getRequestId(), metadata.originMessage().length());
 
   frame_ended_ = true;
   metadata_.reset();
 
-  ENVOY_LOG(debug, "thrift: {} transport ended", transport_->name());
+  ENVOY_LOG(debug, "request sequenceId={}, thrift: {} transport ended", metadata.getRequestId(), transport_->name());
 
   // Reset for next frame.
   complete();

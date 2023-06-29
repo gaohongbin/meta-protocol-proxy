@@ -23,12 +23,12 @@ ConnectionManager::ConnectionManager(Config& config, Random::RandomGenerator& ra
       decoder_(std::make_unique<RequestDecoder>(*codec_, *this)) {}
 
 Network::FilterStatus ConnectionManager::onData(Buffer::Instance& data, bool end_stream) {
-  ENVOY_LOG(debug, "meta protocol: read {} bytes", data.length());
+  ENVOY_LOG(debug, "meta protocol: ConnectionManager::onData read {} bytes", data.length());
   request_buffer_.move(data);
   dispatch();
 
   if (end_stream) {
-    ENVOY_CONN_LOG(debug, "meta protocol: downstream connection has been closed",
+    ENVOY_CONN_LOG(debug, "meta protocol: ConnectionManager::onData downstream connection has been closed",
                    read_callbacks_->connection());
 
     resetAllMessages(false);
@@ -102,7 +102,7 @@ bool ConnectionManager::onHeartbeat(MetadataSharedPtr metadata) {
 
 void ConnectionManager::dispatch() {
   if (0 == request_buffer_.length()) {
-    ENVOY_LOG(debug, "meta protocol: it's empty data");
+    ENVOY_LOG(debug, "ConnectionManager::dispatch meta protocol: it's empty data");
     return;
   }
   // when data is not empty,it will enable timer again.
@@ -119,7 +119,7 @@ void ConnectionManager::dispatch() {
     }
     return;
   } catch (const EnvoyException& ex) {
-    ENVOY_CONN_LOG(error, "meta protocol error: {}", read_callbacks_->connection(), ex.what());
+    ENVOY_CONN_LOG(error, "ConnectionManager::dispatch meta protocol error: {}", read_callbacks_->connection(), ex.what());
     read_callbacks_->connection().close(Network::ConnectionCloseType::NoFlush);
     stats_.request_decoding_error_.inc();
   }
