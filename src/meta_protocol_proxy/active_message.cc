@@ -23,8 +23,10 @@ ActiveResponseDecoder::ActiveResponseDecoder(ActiveMessage& parent, MetaProtocol
       response_status_(UpstreamResponseStatus::MoreData) {}
 
 UpstreamResponseStatus ActiveResponseDecoder::onData(Buffer::Instance& data) {
-  ENVOY_LOG(debug, "meta protocol {} response: the received reply data length is {}",
+  ENVOY_LOG(info, "meta protocol {} response: the received reply data length is {}",
             application_protocol_, data.length());
+
+  ENVOY_LOG(info, "requestId={}:{}, 从接收到请求, 再到上游返回结果总共花费 {} ms", parent_.streamId(), parent_.requestId(), parent_.request_timer_->elapsed().count());
 
   bool underflow = false;
   decoder_->onData(data, underflow);
@@ -42,6 +44,10 @@ UpstreamResponseStatus ActiveResponseDecoder::onData(Buffer::Instance& data) {
 
 void ActiveResponseDecoder::onMessageDecoded(MetadataSharedPtr metadata,
                                              MutationSharedPtr mutation) {
+  ENVOY_LOG(info,
+            "meta protocol {} response: 从请求进入到 meta-proto 到 meta-proto 处理完上游返回的 rsp 总共花费 {} ms, and requestId={}:{}",
+            application_protocol_, parent_.request_timer_->elapsed().count(), parent_.streamId(), parent_.requestId());
+
   ASSERT(metadata->getMessageType() == MessageType::Response ||
          metadata->getMessageType() == MessageType::Error);
   parent_.stream_info_->addBytesReceived(metadata->getMessageSize());
@@ -64,10 +70,9 @@ void ActiveResponseDecoder::onMessageDecoded(MetadataSharedPtr metadata,
                        request_metadata_.getString(ReservedHeaders::RealServerAddress));
   codec_->encode(*metadata_, *mutation, metadata->originMessage());
   downstream_connection_.write(metadata->originMessage(), false);
-  ENVOY_LOG(debug,
-            "meta protocol {} response: the upstream response message has been forwarded to the "
-            "downstream",
-            application_protocol_);
+  ENVOY_LOG(info,
+            "meta protocol {} response: 处理完上游返回的结果, 并将其发送至下游总共花费了 {} ms, requestId={}:{}",
+            application_protocol_, parent_.request_timer_->elapsed().count(), parent_.streamId(), parent_.requestId());
 
   stats_.response_.inc();
   stats_.response_decoding_success_.inc();
@@ -240,16 +245,25 @@ ActiveMessage::ActiveMessage(ConnectionManager& connection_manager)
 ActiveMessage::~ActiveMessage() {
   ENVOY_LOG(trace, "********** ActiveMessage destructed ***********");
   connection_manager_.stats().request_active_.dec();
+
+  // 这里是生成 meta_TP999 的 metrics 的地方。
+  // 这里针对超过 600 ms 的请求, 打出其重要信息
+  if (request_timer_->elapsed() >= std::chrono::milliseconds(600)) {
+    ENVOY_LOG(error, "在 meta-protocol-proxy 中, 该请求总共花费了 {} ms, and requestId={}:{}", request_timer_->elapsed().count(), streamId(), requestId());
+  } else {
+    ENVOY_LOG(info, "在 meta-protocol-proxy 中, 该请求总共花费了 {} ms, and requestId={}:{}", request_timer_->elapsed().count(), streamId(), requestId());
+  }
+
   request_timer_->complete();
   for (auto& filter : decoder_filters_) {
-    ENVOY_LOG(debug, "destroy decoder filter");
+    ENVOY_LOG(debug, "destroy decoder filter, and requestId={}:{}", streamId(), requestId());
     filter->handler()->onDestroy();
   }
 
   for (auto& filter : encoder_filters_) {
     // Do not call on destroy twice for dual registered filters.
     if (!filter->dual_filter_) {
-      ENVOY_LOG(debug, "destroy encoder filter");
+      ENVOY_LOG(debug, "destroy encoder filter, and requestId={}:{}", streamId(), requestId());
       filter->handler()->onDestroy();
     }
   }
@@ -289,6 +303,12 @@ ActiveMessage::commonDecodePrefix(ActiveMessageDecoderFilter* filter,
 }
 
 void ActiveMessage::onMessageDecoded(MetadataSharedPtr metadata, MutationSharedPtr mutation) {
+
+  ENVOY_LOG(
+      info,
+      "meta protocol {} request: 处理完下游请求, requestId={}:{}, 花费 {} ms",
+      connection_manager_.config().applicationProtocol(), streamId(), requestId(), request_timer_->elapsed().count());
+
   connection_manager_.stats().request_decoding_success_.inc();
   stream_info_->addBytesSent(metadata->getMessageSize());
 
@@ -390,9 +410,9 @@ void ActiveMessage::onMessageDecoded(MetadataSharedPtr metadata, MutationSharedP
   }
 
   ENVOY_LOG(
-      debug,
-      "meta protocol {} request: complete processing of downstream request messages, id is {}",
-      connection_manager_.config().applicationProtocol(), metadata->getRequestId());
+      info,
+      "meta protocol {} request: 处理完下游请求, 并将请求发送至上游, requestId={}:{}, 花费 {} ms",
+      connection_manager_.config().applicationProtocol(), streamId(), requestId(), request_timer_->elapsed().count());
 }
 
 void ActiveMessage::setUpstreamConnection(Tcp::ConnectionPool::ConnectionDataPtr conn) {
@@ -524,7 +544,8 @@ void ActiveMessage::sendLocalReply(const DirectResponse& response, bool end_stre
 }
 
 void ActiveMessage::startUpstreamResponse(Metadata& requestMetadata) {
-  ENVOY_LOG(debug, "meta protocol response: start upstream");
+  ENVOY_LOG(info, "meta protocol response: start upstream, 请求从进入 meta-proto 到上游返回结果 cost time: {} ms, 对应 requestId={}:{}",
+            request_timer_->elapsed().count(), streamId(), requestId());
 
   ASSERT(response_decoder_ == nullptr);
 
