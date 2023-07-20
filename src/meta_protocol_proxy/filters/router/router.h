@@ -45,31 +45,35 @@ protected:
   PrepareUpstreamRequestResult prepareUpstreamRequest(const std::string& cluster_name,
                                                       MetadataSharedPtr& metadata,
                                                       Upstream::LoadBalancerContext* lb_context) {
+    // 获取 cluster 信息
     Upstream::ThreadLocalCluster* cluster = cluster_manager_.getThreadLocalCluster(cluster_name);
     if (!cluster) {
-      ENVOY_LOG(warn, "meta protocol router: unknown cluster '{}'", cluster_name);
+      ENVOY_LOG(warn, "meta protocol router: unknown cluster '{}', tcloudTraceId={}", cluster_name, metadata->getString("tcloudTraceId"));
       return {AppException(
                   Error{ErrorType::ClusterNotFound,
-                        fmt::format("meta protocol router: unknown cluster '{}'", cluster_name)}),
+                        fmt::format("meta protocol router: unknown cluster '{}', tcloudTraceId={}", cluster_name, metadata->getString("tcloudTraceId"))}),
               absl::nullopt, "unknown_cluster"};
     }
 
     cluster_ = cluster->info();
-    ENVOY_LOG(debug, "meta protocol router: cluster {} match for request '{}'", cluster_->name(),
-              metadata->getRequestId());
+    ENVOY_LOG(debug, "meta protocol router: cluster {} match for request '{}', tcloudTraceId={}", cluster_->name(),
+              metadata->getRequestId(), metadata->getString("tcloudTraceId"));
 
+    // cluster 是否维护状态
     if (cluster_->maintenanceMode()) {
-      ENVOY_LOG(warn, "meta protocol router: maintenance mode for cluster '{}'", cluster_name);
+      ENVOY_LOG(warn, "meta protocol router: maintenance mode for cluster '{}', tcloudTraceId={}", cluster_name, metadata->getString("tcloudTraceId"));
       return {
           AppException(Error{ErrorType::Unspecified,
-                             fmt::format("meta protocol router: maintenance mode for cluster '{}'",
-                                         cluster_name)}),
+                             fmt::format("meta protocol router: maintenance mode for cluster '{}', tcloudTraceId={}",
+                                         cluster_name, metadata->getString("tcloudTraceId"))}),
           absl::nullopt, "cluster_in_maintenance_mode"};
     }
 
+
+    // 获取连接池
     auto conn_pool_data = cluster->tcpConnPool(Upstream::ResourcePriority::Default, lb_context);
     if (!conn_pool_data) {
-      ENVOY_LOG(warn, "meta protocol router: no healthy upstream for '{}'", cluster_name);
+      ENVOY_LOG(warn, "meta protocol router: no healthy upstream for '{}', tcloudTraceId={}", cluster_name, metadata->getString("tcloudTraceId"));
       return {AppException(Error{
                   ErrorType::NoHealthyUpstream,
                   fmt::format("meta protocol router: no healthy upstream for '{}'", cluster_name)}),

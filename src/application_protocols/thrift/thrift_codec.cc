@@ -61,6 +61,7 @@ MetaProtocolProxy::DecodeStatus ThriftCodec::decode(Buffer::Instance& data,
     }
 
     frame_started_ = true;
+    // 初始化状态机
     state_machine_ = std::make_unique<DecoderStateMachine>(*protocol_, *metadata_);
   }
 
@@ -191,6 +192,11 @@ void ThriftCodec::toMetadata(const ThriftProxy::MessageMetadata& msgMetadata, Me
     metadata.setRequestId(msgMetadata.sequenceId());
   }
 
+  // 存入 tcloudTraceId
+  if (msgMetadata.hasTCloudTraceId()) {
+    metadata.putString("tcloudTraceId", msgMetadata.tcloudTraceId());
+  }
+
   // 存入 MessageType
   ASSERT(msgMetadata.hasMessageType());
   switch (msgMetadata.messageType()) {
@@ -241,19 +247,25 @@ ProtocolState DecoderStateMachine::passthroughData(Buffer::Instance& buffer) {
 
 // MessageBegin -> StructBegin
 ProtocolState DecoderStateMachine::messageBegin(Buffer::Instance& buffer) {
+  // binary 部分的长度
   const auto total = buffer.length();
+
+  // 获取了 seqId, methodName
   if (!proto_.readMessageBegin(buffer, metadata_)) {
     return ProtocolState::WaitForData;
   }
 
   stack_.clear();
+  // 重新将 MessageEnd 存入
   stack_.emplace_back(Frame(ProtocolState::MessageEnd));
 
+  // 这里目前还没有实现
   if (passthrough_enabled_) {
     body_bytes_ = metadata_.frameSize() - (total - buffer.length());
     return ProtocolState::PassthroughData;
   }
 
+  // 将相应数据写入 origin_message_
   proto_.writeMessageBegin(origin_message_, metadata_);
   return ProtocolState::StructBegin;
 }
@@ -269,6 +281,7 @@ ProtocolState DecoderStateMachine::messageEnd(Buffer::Instance& buffer) {
 }
 
 // StructBegin -> FieldBegin
+// 针对 binary 的 structBegin 其实是空操作
 ProtocolState DecoderStateMachine::structBegin(Buffer::Instance& buffer) {
   std::string name;
   if (!proto_.readStructBegin(buffer, name)) {
@@ -296,6 +309,8 @@ ProtocolState DecoderStateMachine::fieldBegin(Buffer::Instance& buffer) {
   std::string name;
   ThriftProxy::FieldType field_type;
   int16_t field_id;
+
+  // 获取 field 对应的 type 和 id
   if (!proto_.readFieldBegin(buffer, name, field_type, field_id)) {
     return ProtocolState::WaitForData;
   }
@@ -304,9 +319,12 @@ ProtocolState DecoderStateMachine::fieldBegin(Buffer::Instance& buffer) {
     return ProtocolState::StructEnd;
   }
 
-  stack_.emplace_back(Frame(ProtocolState::FieldEnd, field_type));
+  // 栈中压入 FieldEnd 以及 field_type, 这里我们新增一个 field_id
+  stack_.emplace_back(Frame(ProtocolState::FieldEnd, field_type, field_id));
 
+  // 将 field 的 type 和 id 写入 origin_message_
   proto_.writeFieldBegin(origin_message_, name, field_type, field_id);
+  // 下一步获取对应的 field 的值
   return ProtocolState::FieldValue;
 }
 
@@ -314,8 +332,11 @@ ProtocolState DecoderStateMachine::fieldBegin(Buffer::Instance& buffer) {
 ProtocolState DecoderStateMachine::fieldValue(Buffer::Instance& buffer) {
   ASSERT(!stack_.empty());
 
+  // 可以看到在 fieldBegin 中压入了如下信息
+  // stack_.emplace_back(Frame(ProtocolState::FieldEnd, field_type));
   Frame& frame = stack_.back();
-  return handleValue(buffer, frame.elem_type_, frame.return_state_);
+  // 这里新增 field_id 传递
+  return handleValue(buffer, frame.elem_type_, frame.return_state_, frame.field_id_);
 }
 
 // FieldEnd -> FieldBegin
@@ -374,11 +395,14 @@ ProtocolState DecoderStateMachine::listEnd(Buffer::Instance& buffer) {
 ProtocolState DecoderStateMachine::mapBegin(Buffer::Instance& buffer) {
   ThriftProxy::FieldType key_type, value_type;
   uint32_t size;
+  // 这里获取了 map 的 keyType 和 valueType 以及 Map 的 size
   if (!proto_.readMapBegin(buffer, key_type, value_type, size)) {
     return ProtocolState::WaitForData;
   }
 
-  stack_.emplace_back(Frame(ProtocolState::MapEnd, key_type, value_type, size));
+  Frame& frame = stack_.back();
+  // 又有了一个 MapEnd
+  stack_.emplace_back(Frame(ProtocolState::MapEnd, key_type, value_type, size, frame.field_id_));
 
   proto_.writeMapBegin(origin_message_, key_type, value_type, size);
   return ProtocolState::MapKey;
@@ -390,19 +414,23 @@ ProtocolState DecoderStateMachine::mapKey(Buffer::Instance& buffer) {
   ASSERT(!stack_.empty());
   Frame& frame = stack_.back();
   if (frame.remaining_ == 0) {
+    // stack_ 出栈并返回 return_state
+    // 在所有 map 元素解析完成以后, 返回 MapEnd
     return popReturnState();
   }
 
-  return handleValue(buffer, frame.elem_type_, ProtocolState::MapValue);
+  // 获取 map 的 key, 并返回下一步的状态为 MapValue
+  return handleValue(buffer, frame.elem_type_, ProtocolState::MapValue, frame.field_id_);
 }
 
 // MapValue -> MapKey, ListBegin, MapBegin, SetBegin, StructBegin (depending on value type), or
 // MapValue -> MapKey
 ProtocolState DecoderStateMachine::mapValue(Buffer::Instance& buffer) {
   ASSERT(!stack_.empty());
+  // 这个 index 不就是获取栈的末尾下标吗
   const uint32_t index = stack_.size() - 1;
   ASSERT(stack_[index].remaining_ != 0);
-  ProtocolState nextState = handleValue(buffer, stack_[index].value_type_, ProtocolState::MapKey);
+  ProtocolState nextState = handleValue(buffer, stack_[index].value_type_, ProtocolState::MapKey, stack_[index].field_id_);
   if (nextState != ProtocolState::WaitForData) {
     stack_[index].remaining_--;
   }
@@ -411,6 +439,7 @@ ProtocolState DecoderStateMachine::mapValue(Buffer::Instance& buffer) {
 }
 
 // MapEnd -> stack's return state
+// 针对 binary 而言, 这两个方法均是空的
 ProtocolState DecoderStateMachine::mapEnd(Buffer::Instance& buffer) {
   if (!proto_.readMapEnd(buffer)) {
     return ProtocolState::WaitForData;
@@ -462,8 +491,9 @@ ProtocolState DecoderStateMachine::setEnd(Buffer::Instance& buffer) {
 
 ProtocolState DecoderStateMachine::handleValue(Buffer::Instance& buffer,
                                                ThriftProxy::FieldType elem_type,
-                                               ProtocolState return_state) {
+                                               ProtocolState return_state, int16_t field_id) {
   switch (elem_type) {
+  // 如果是 bool 类型,  直接读取并修改  origin_message_
   case ThriftProxy::FieldType::Bool: {
     bool value{};
     if (proto_.readBool(buffer, value)) {
@@ -515,16 +545,29 @@ ProtocolState DecoderStateMachine::handleValue(Buffer::Instance& buffer,
   case ThriftProxy::FieldType::String: {
     std::string value;
     if (proto_.readString(buffer, value)) {
+      // 这里获取到 trace_context 的 key
+      ENVOY_LOG(debug, "解析出来的 string value = {}, 此时 field_id = {}", value, field_id);
+      if (field_id == int16_t(11111) && return_state == ProtocolState::MapValue && Http::LowerCaseString(value).get() == "twl-span-context") {
+        get_tcloud_trace_context_ = true;
+      }
+      // 这里判断获取到 trace_context 的 value
+      if (get_tcloud_trace_context_ && return_state == ProtocolState::MapKey) {
+        tcloud_trace_context_ = value;
+        get_tcloud_trace_context_ = false;
+      }
+      // 继续原逻辑
       proto_.writeString(origin_message_, value);
       return return_state;
     }
     break;
   }
+  // 如果是一个 struct
   case ThriftProxy::FieldType::Struct:
     stack_.emplace_back(Frame(return_state));
     return ProtocolState::StructBegin;
+  // 如果 field 是一个 Map, 前面我们知道 stack_ 已经插入了一个 fieldEnd 了, 这里又插入了一个 fieldEnd
   case ThriftProxy::FieldType::Map:
-    stack_.emplace_back(Frame(return_state));
+    stack_.emplace_back(Frame(return_state, field_id));
     return ProtocolState::MapBegin;
   case ThriftProxy::FieldType::List:
     stack_.emplace_back(Frame(return_state));
@@ -539,6 +582,7 @@ ProtocolState DecoderStateMachine::handleValue(Buffer::Instance& buffer,
   return ProtocolState::WaitForData;
 }
 
+// 从 ProtocolState::MessageBegin 开始
 ProtocolState DecoderStateMachine::handleState(Buffer::Instance& buffer) {
   switch (state_) {
   case ProtocolState::PassthroughData:
@@ -582,6 +626,7 @@ ProtocolState DecoderStateMachine::handleState(Buffer::Instance& buffer) {
   }
 }
 
+// 出栈
 ProtocolState DecoderStateMachine::popReturnState() {
   ASSERT(!stack_.empty());
   ProtocolState return_state = stack_.back().return_state_;
@@ -589,6 +634,7 @@ ProtocolState DecoderStateMachine::popReturnState() {
   return return_state;
 }
 
+// 这里开始解析 binary 里面的内容
 ProtocolState DecoderStateMachine::run(Buffer::Instance& buffer) {
   while (state_ != ProtocolState::Done) {
     ENVOY_LOG(trace, "thrift: state {}, {} bytes available", ProtocolStateNameValues::name(state_),
@@ -602,6 +648,14 @@ ProtocolState DecoderStateMachine::run(Buffer::Instance& buffer) {
     }
 
     state_ = nextState;
+  }
+
+  // 将 thrift 的 traceId 存到 metadata 中
+  if (!tcloud_trace_context_.empty()) {
+    std::vector<std::string> traceContextSpilts = absl::StrSplit(tcloud_trace_context_, ':');
+    if (traceContextSpilts.size() >= 1) {
+      metadata_.setTCloudTraceId(traceContextSpilts[0]);
+    }
   }
 
   return state_;

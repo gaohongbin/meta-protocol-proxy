@@ -38,8 +38,8 @@ FilterStatus Router::onMessageDecoded(MetadataSharedPtr request_metadata,
   // 获取 route
   route_ = decoder_filter_callbacks_->route();
   if (!route_) {
-    ENVOY_STREAM_LOG(debug, "meta protocol router: no cluster match for request '{}'",
-                     *decoder_filter_callbacks_, request_metadata_->getRequestId());
+    ENVOY_STREAM_LOG(debug, "meta protocol router: no cluster match for request '{}', tcloudTraceId={}",
+                     *decoder_filter_callbacks_, request_metadata_->getRequestId(), request_metadata_->getString("tcloudTraceId"));
 
     // emit access log
     emitLogEntry(request_metadata_, nullptr, static_cast<int>(ResponseStatus::Error),
@@ -47,8 +47,8 @@ FilterStatus Router::onMessageDecoded(MetadataSharedPtr request_metadata,
 
     decoder_filter_callbacks_->sendLocalReply(
         AppException(Error{ErrorType::RouteNotFound,
-                           fmt::format("meta protocol router: no matched route for request '{}'",
-                                       request_metadata_->getRequestId())}),
+                           fmt::format("meta protocol router: no matched route for request '{}', tcloudTraceId={}",
+                                       request_metadata_->getRequestId(), request_metadata_->getString("tcloudTraceId"))}),
         false);
     return FilterStatus::AbortIteration;
   }
@@ -56,9 +56,11 @@ FilterStatus Router::onMessageDecoded(MetadataSharedPtr request_metadata,
   route_entry_ = route_->routeEntry();
   decoder_filter_callbacks_->streamInfo().setRouteName(route_entry_->routeName());
   const std::string& cluster_name = route_entry_->clusterName();
+  ENVOY_LOG(debug, "tcloudTraceId={}, cluster_name = {}", request_metadata_->getString("tcloudTraceId"), cluster_name);
 
   auto prepare_result = prepareUpstreamRequest(cluster_name, request_metadata_, this);
   if (prepare_result.exception.has_value()) {
+    ENVOY_LOG(debug, "prepare_result.exception.has_value tcloudTraceId={}, cluster_name = {}", request_metadata_->getString("tcloudTraceId"), cluster_name);
     // emit access log
     emitLogEntry(request_metadata_, nullptr, static_cast<int>(ResponseStatus::Error),
                  prepare_result.response_code_detail);
@@ -67,9 +69,11 @@ FilterStatus Router::onMessageDecoded(MetadataSharedPtr request_metadata,
     return FilterStatus::AbortIteration;
   }
   auto& conn_pool_data = prepare_result.conn_pool_data.value();
+  // 生成
   decoder_filter_callbacks_->streamInfo().setUpstreamClusterInfo(cluster_);
 
-  ENVOY_STREAM_LOG(debug, "meta protocol router: decoding request {}", *decoder_filter_callbacks_, request_metadata_->getRequestId());
+  // 这里打出来的是应该是 ServerConnection 的 id
+  ENVOY_STREAM_LOG(debug, "meta protocol router: decoding request {}, tcloudTraceId={}", *decoder_filter_callbacks_, request_metadata_->getRequestId(), request_metadata_->getString("tcloudTraceId"));
 
   // if x-request-id is created, then it's the first span in this trace
   is_first_span_ = setXRequestID(request_metadata, request_mutation);
@@ -82,15 +86,16 @@ FilterStatus Router::onMessageDecoded(MetadataSharedPtr request_metadata,
   auto metadata_clone = request_metadata_->clone();
 
   route_entry_->requestMutation(request_mutation);
-  upstream_request_ =
-      std::make_unique<UpstreamRequest>(*this, conn_pool_data, request_metadata_, request_mutation);
+  // 生成 UpstreamRequest 实例
+  upstream_request_ = std::make_unique<UpstreamRequest>(*this, conn_pool_data, request_metadata_, request_mutation);
   auto filter_status = upstream_request_->start();
+  ENVOY_LOG(debug, "UpstreamRequest 调用完成, tcloudTraceId={}", request_metadata_->getString("tcloudTraceId"));
 
   // Prepare connections for shadow routers, if there are mirror policies configured and currently
   // enabled.
   const auto& policies = route_entry_->requestMirrorPolicies();
-  ENVOY_STREAM_LOG(debug, "meta protocol router: requestMirrorPolicies size:{}",
-                   *decoder_filter_callbacks_, policies.size());
+  ENVOY_STREAM_LOG(debug, "meta protocol router: requestMirrorPolicies size:{}, tcloudTraceId={}",
+                   *decoder_filter_callbacks_, policies.size(), request_metadata_->getString("tcloudTraceId"));
 
   if (!policies.empty()) {
     for (const auto& policy : policies) {

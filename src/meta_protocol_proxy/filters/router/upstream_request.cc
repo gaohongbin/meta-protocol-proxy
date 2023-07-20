@@ -16,17 +16,20 @@ UpstreamRequest::UpstreamRequest(RequestOwner& parent, Upstream::TcpPoolData& po
     : parent_(parent), conn_pool_(pool), metadata_(metadata), mutation_(mutation),
       request_complete_(false), response_started_(false), response_complete_(false),
       stream_reset_(false) {
+  // 这里其实是最关键的初始化
   upstream_request_buffer_.move(metadata->originMessage(), metadata->originMessage().length());
 }
 
 FilterStatus UpstreamRequest::start() {
   Tcp::ConnectionPool::Cancellable* handle = conn_pool_.newConnection(*this);
   if (handle) {
+    ENVOY_LOG(debug, "UpstreamRequest::start() PauseIteration tcloudTraceId={}", metadata_->getString("tcloudTraceId"));
     // Pause while we wait for a connection.
     conn_pool_handle_ = handle;
     return FilterStatus::PauseIteration;
   }
 
+  ENVOY_LOG(debug, "UpstreamRequest::start() ContinueIteration tcloudTraceId={}", metadata_->getString("tcloudTraceId"));
   return FilterStatus::ContinueIteration;
 }
 
@@ -83,14 +86,17 @@ void UpstreamRequest::encodeData(Buffer::Instance& data) {
   ASSERT(conn_data_);
   ASSERT(!conn_pool_handle_);
 
-  ENVOY_LOG(trace, "proxying {} bytes", data.length());
+  ENVOY_LOG(debug, "proxying {} bytes, tcloudTraceId={}", data.length(), metadata_->getString("tcloudTraceId"));
   auto codec = parent_.createCodec();
+  // 这里什么都没做
   codec->encode(*metadata_, *mutation_, data);
   conn_data_->connection().write(data, false);
 }
 
 void UpstreamRequest::onPoolFailure(ConnectionPool::PoolFailureReason reason, absl::string_view,
                                     Upstream::HostDescriptionConstSharedPtr host) {
+
+  ENVOY_LOG(debug, "meta protocol upstream request onPoolFailure, tcloudTraceId={}, 上游 ip={}, reason={}", metadata_->getString("tcloudTraceId"), host->address()->asString(), int(reason));
   parent_.onUpstreamHostSelected(host);
   conn_pool_handle_ = nullptr;
 
@@ -119,6 +125,7 @@ void UpstreamRequest::onPoolFailure(ConnectionPool::PoolFailureReason reason, ab
 void UpstreamRequest::onPoolReady(Tcp::ConnectionPool::ConnectionDataPtr&& conn_data,
                                   Upstream::HostDescriptionConstSharedPtr host) {
   ENVOY_LOG(debug, "meta protocol upstream request: tcp connection is ready");
+  ENVOY_LOG(debug, "meta protocol upstream request onPoolReady, 回调 onPoolReady, tcloudTraceId={}, 上游 ip={}", metadata_->getString("tcloudTraceId"), host->address()->asString());
   parent_.onUpstreamHostSelected(host);
 
   // Only invoke continueDecoding if we'd previously stopped the filter chain.
@@ -134,6 +141,7 @@ void UpstreamRequest::onPoolReady(Tcp::ConnectionPool::ConnectionDataPtr&& conn_
   conn_pool_handle_ = nullptr;
 
   // Store the upstream ip to the metadata, which will be used in the response
+  // 因为连接池本来就是针对 host 的, 所以通过 host 获取的 connection 当然 remoteAddress 是上游的 ip 了。
   metadata_->putString(
       ReservedHeaders::RealServerAddress,
       conn_data_->connection().connectionInfoProvider().remoteAddress()->asString());

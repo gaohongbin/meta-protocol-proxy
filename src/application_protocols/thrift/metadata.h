@@ -115,6 +115,11 @@ public:
   const std::string& methodName() const { return method_name_.value(); }
   void setMethodName(const std::string& method_name) { method_name_ = method_name; }
 
+  // 自定义 traceId
+  bool hasTCloudTraceId() const { return tcloud_trace_id_.has_value(); }
+  const std::string& tcloudTraceId() const { return tcloud_trace_id_.value(); }
+  void setTCloudTraceId(const std::string& tcloud_trace_id) { tcloud_trace_id_ = tcloud_trace_id; }
+
   bool hasHeaderFlags() const { return header_flags_.has_value(); }
   int16_t headerFlags() const { return header_flags_.value(); }
   void setHeaderFlags(int16_t header_flags) { header_flags_ = header_flags; }
@@ -185,6 +190,7 @@ private:
   absl::optional<uint32_t> frame_size_{};
   absl::optional<ProtocolType> proto_{};
   absl::optional<std::string> method_name_{};
+  absl::optional<std::string> tcloud_trace_id_{};
   absl::optional<int16_t> header_flags_{};
   absl::optional<int32_t> seq_id_{};
   absl::optional<MessageType> msg_type_{};

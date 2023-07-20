@@ -107,14 +107,34 @@ private:
    */
   struct Frame {
     Frame(ProtocolState state) : return_state_(state), elem_type_{}, value_type_{}, remaining_(0) {}
+
+    Frame(ProtocolState state, int16_t field_id) : return_state_(state), elem_type_{}, value_type_{}, remaining_(0), field_id_(field_id){}
+
+    // 普通元素
     Frame(ProtocolState state, ThriftProxy::FieldType elem_type)
         : return_state_(state), elem_type_(elem_type), value_type_{}, remaining_{} {}
+
+    // 针对 Set, List 等。
     Frame(ProtocolState state, ThriftProxy::FieldType elem_type, uint32_t remaining)
         : return_state_(state), elem_type_(elem_type), value_type_{}, remaining_(remaining) {}
-    Frame(ProtocolState state, ThriftProxy::FieldType key_type, ThriftProxy::FieldType value_type,
-          uint32_t remaining)
+
+    // 针对 Map
+    Frame(ProtocolState state, ThriftProxy::FieldType key_type, ThriftProxy::FieldType value_type, uint32_t remaining)
         : return_state_(state), elem_type_(key_type), value_type_(value_type),
           remaining_(remaining) {}
+
+    // 普通元素 + field_id
+    Frame(ProtocolState state, ThriftProxy::FieldType elem_type, int16_t field_id)
+        : return_state_(state), elem_type_(elem_type), value_type_{}, remaining_{}, field_id_(field_id) {}
+
+    // set, list + field_id
+    Frame(ProtocolState state, ThriftProxy::FieldType elem_type, uint32_t remaining, int16_t field_id)
+        : return_state_(state), elem_type_(elem_type), value_type_{}, remaining_(remaining), field_id_(field_id) {}
+
+    // map + field_id
+    Frame(ProtocolState state, ThriftProxy::FieldType key_type, ThriftProxy::FieldType value_type, uint32_t remaining, int16_t field_id)
+        : return_state_(state), elem_type_(key_type), value_type_(value_type),
+          remaining_(remaining), field_id_(field_id) {}
 
     // Structs, lists, maps, and sets may be recursively nested in any combination. This field
     // indicates which state to return to at the completion of each of those types.
@@ -128,6 +148,9 @@ private:
 
     // Indicates the number of elements (or key-value pairs) remaining in a list, map, or set.
     uint32_t remaining_;
+
+    // 保存 field id, 用来获取 tcloud trace
+    int16_t field_id_;
   };
 
   // These functions map directly to the matching ProtocolState values. Each returns the next state
@@ -157,7 +180,7 @@ private:
   // based on elem_type. For primitive value types, return_state is returned as the next state
   // (unless WaitForData is returned).
   ProtocolState handleValue(Buffer::Instance& buffer, ThriftProxy::FieldType elem_type,
-                            ProtocolState return_state);
+                            ProtocolState return_state, int16_t field_id = int16_t(-1));
 
   // handleState delegates to the appropriate method based on state_.
   ProtocolState handleState(Buffer::Instance& buffer);
@@ -173,6 +196,10 @@ private:
   uint32_t body_bytes_{};
   bool passthrough_enabled_{false}; // TODO enable passthrough in the codec config
   Buffer::OwnedImpl origin_message_;
+
+  // 为了获取 tcloud traceId, 我们新增如下两个状态
+  bool get_tcloud_trace_context_{false};  // 是否到了获取 trace_context 的时机
+  std::string tcloud_trace_context_ = "";  // 获取到的 trace_context
 };
 
 using DecoderStateMachinePtr = std::unique_ptr<DecoderStateMachine>;

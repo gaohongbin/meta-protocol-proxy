@@ -82,14 +82,16 @@ cd /home/ubuntu \
 现在支持 x86 和 arm 架构
 ### 设置 meta-protocol-proxy 代码库 path
 
+
 ```bash
-export META_PROTOCOL_PROXY_REPO=/path/to/meta-protocol-proxy
+export META_PROTOCOL_PROXY_REPO=/Users/admin/c/meta-protocol-proxy
+export ENVOY_PATH=/Users/admin/c/tcloud_envoy/envoy
 ```
 
 ### 启动构建容器
 
 ```bash
-docker run -it --name meta-protocol-proxy-build -v ${META_PROTOCOL_PROXY_REPO}:/meta-protocol-proxy aeraki/meta-protocol-proxy-build:2022-0429-0 bash
+docker run -it --name meta-protocol-proxy-build -v ${ENVOY_PATH}:${ENVOY_PATH} -v ${META_PROTOCOL_PROXY_REPO}:/meta-protocol-proxy aeraki/meta-protocol-proxy-build:2022-0429-0 bash
 ```
 
 ### 编译

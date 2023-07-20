@@ -26,7 +26,7 @@ UpstreamResponseStatus ActiveResponseDecoder::onData(Buffer::Instance& data) {
   ENVOY_LOG(info, "meta protocol {} response: the received reply data length is {}",
             application_protocol_, data.length());
 
-  ENVOY_LOG(info, "requestId={}:{}, 从接收到请求, 再到上游返回结果总共花费 {} ms", parent_.streamId(), parent_.requestId(), parent_.request_timer_->elapsed().count());
+  ENVOY_LOG(info, "requestId={}:{}, 从接收到请求, 再到上游返回结果总共花费 {} ms, tcloudTraceId={}", parent_.streamId(), parent_.requestId(), parent_.request_timer_->elapsed().count(), request_metadata_.getString("tcloudTraceId"));
 
   bool underflow = false;
   decoder_->onData(data, underflow);
@@ -45,8 +45,8 @@ UpstreamResponseStatus ActiveResponseDecoder::onData(Buffer::Instance& data) {
 void ActiveResponseDecoder::onMessageDecoded(MetadataSharedPtr metadata,
                                              MutationSharedPtr mutation) {
   ENVOY_LOG(info,
-            "meta protocol {} response: 从请求进入到 meta-proto 到 meta-proto 处理完上游返回的 rsp 总共花费 {} ms, and requestId={}:{}",
-            application_protocol_, parent_.request_timer_->elapsed().count(), parent_.streamId(), parent_.requestId());
+            "meta protocol {} response: 从请求进入到 meta-proto 到 meta-proto 处理完上游返回的 rsp 总共花费 {} ms, and requestId={}:{}, tcloudTraceId={}",
+            application_protocol_, parent_.request_timer_->elapsed().count(), parent_.streamId(), parent_.requestId(), metadata->getString("tcloudTraceId"));
 
   ASSERT(metadata->getMessageType() == MessageType::Response ||
          metadata->getMessageType() == MessageType::Error);
@@ -71,8 +71,8 @@ void ActiveResponseDecoder::onMessageDecoded(MetadataSharedPtr metadata,
   codec_->encode(*metadata_, *mutation, metadata->originMessage());
   downstream_connection_.write(metadata->originMessage(), false);
   ENVOY_LOG(info,
-            "meta protocol {} response: 处理完上游返回的结果, 并将其发送至下游总共花费了 {} ms, requestId={}:{}",
-            application_protocol_, parent_.request_timer_->elapsed().count(), parent_.streamId(), parent_.requestId());
+            "meta protocol {} response: 处理完上游返回的结果, 并将其发送至下游总共花费了 {} ms, requestId={}:{}, tcloudTraceId={}",
+            application_protocol_, parent_.request_timer_->elapsed().count(), parent_.streamId(), parent_.requestId(), metadata->getString("tcloudTraceId"));
 
   stats_.response_.inc();
   stats_.response_decoding_success_.inc();
@@ -249,21 +249,21 @@ ActiveMessage::~ActiveMessage() {
   // 这里是生成 meta_TP999 的 metrics 的地方。
   // 这里针对超过 600 ms 的请求, 打出其重要信息
   if (request_timer_->elapsed() >= std::chrono::milliseconds(600)) {
-    ENVOY_LOG(error, "在 meta-protocol-proxy 中, 该请求总共花费了 {} ms, and requestId={}:{}", request_timer_->elapsed().count(), streamId(), requestId());
+    ENVOY_LOG(error, "在 meta-protocol-proxy 中, 该请求总共花费了 {} ms, and requestId={}:{}, tcloudTraceId={}", request_timer_->elapsed().count(), streamId(), requestId(), metadata_->getString("tcloudTraceId"));
   } else {
-    ENVOY_LOG(info, "在 meta-protocol-proxy 中, 该请求总共花费了 {} ms, and requestId={}:{}", request_timer_->elapsed().count(), streamId(), requestId());
+    ENVOY_LOG(info, "在 meta-protocol-proxy 中, 该请求总共花费了 {} ms, and requestId={}:{}, tcloudTraceId={}", request_timer_->elapsed().count(), streamId(), requestId(), metadata_->getString("tcloudTraceId"));
   }
 
   request_timer_->complete();
   for (auto& filter : decoder_filters_) {
-    ENVOY_LOG(debug, "destroy decoder filter, and requestId={}:{}", streamId(), requestId());
+    ENVOY_LOG(debug, "destroy decoder filter, and requestId={}:{}, tcloudTraceId={}", streamId(), requestId(), metadata_->getString("tcloudTraceId"));
     filter->handler()->onDestroy();
   }
 
   for (auto& filter : encoder_filters_) {
     // Do not call on destroy twice for dual registered filters.
     if (!filter->dual_filter_) {
-      ENVOY_LOG(debug, "destroy encoder filter, and requestId={}:{}", streamId(), requestId());
+      ENVOY_LOG(debug, "destroy encoder filter, and requestId={}:{}, tcloudTraceId={}", streamId(), requestId(), metadata_->getString("tcloudTraceId"));
       filter->handler()->onDestroy();
     }
   }
@@ -306,10 +306,13 @@ void ActiveMessage::onMessageDecoded(MetadataSharedPtr metadata, MutationSharedP
 
   ENVOY_LOG(
       info,
-      "meta protocol {} request: 处理完下游请求, requestId={}:{}, 花费 {} ms",
-      connection_manager_.config().applicationProtocol(), streamId(), requestId(), request_timer_->elapsed().count());
+      "meta protocol {} request: 处理完下游请求, requestId={}:{}, 花费 {} ms, tcloudTraceId={}",
+      connection_manager_.config().applicationProtocol(), streamId(), requestId(), request_timer_->elapsed().count(), metadata->getString("tcloudTraceId"));
 
   connection_manager_.stats().request_decoding_success_.inc();
+
+  ENVOY_LOG(info, "onMessageDecoded 处理请求 requestId={}:{}, tcloudTraceId={}, size={}, messageType={}", streamId(), requestId(), metadata->getString("tcloudTraceId"), metadata->getMessageSize(), int(metadata->getMessageType()));
+  // todo 这句执行了吗, 没看到设置 header_size 和 body_size 呀 ？
   stream_info_->addBytesSent(metadata->getMessageSize());
 
   // application protocol will be used to emit access log
@@ -319,6 +322,7 @@ void ActiveMessage::onMessageDecoded(MetadataSharedPtr metadata, MutationSharedP
   metadata->putString(ReservedHeaders::ApplicationProtocol,
                       connection_manager_.config().applicationProtocol());
 
+  // 这里 MessageType 应该是 Request
   bool needApplyFilters = false;
   switch (metadata->getMessageType()) {
   case MessageType::Request:
@@ -412,8 +416,8 @@ void ActiveMessage::onMessageDecoded(MetadataSharedPtr metadata, MutationSharedP
 
   ENVOY_LOG(
       info,
-      "meta protocol {} request: 处理完下游请求, 并将请求发送至上游, requestId={}:{}, 花费 {} ms",
-      connection_manager_.config().applicationProtocol(), streamId(), requestId(), request_timer_->elapsed().count());
+      "meta protocol {} request: 处理完下游请求, 并将请求发送至上游, requestId={}:{}, 花费 {} ms, tcloudTraceId={}",
+      connection_manager_.config().applicationProtocol(), streamId(), requestId(), request_timer_->elapsed().count(), metadata->getString("tcloudTraceId"));
 }
 
 void ActiveMessage::setUpstreamConnection(Tcp::ConnectionPool::ConnectionDataPtr conn) {
@@ -545,8 +549,8 @@ void ActiveMessage::sendLocalReply(const DirectResponse& response, bool end_stre
 }
 
 void ActiveMessage::startUpstreamResponse(Metadata& requestMetadata) {
-  ENVOY_LOG(info, "meta protocol response: start upstream, 请求从进入 meta-proto 到上游返回结果 cost time: {} ms, 对应 requestId={}:{}",
-            request_timer_->elapsed().count(), streamId(), requestId());
+  ENVOY_LOG(info, "meta protocol response: start upstream, 请求从进入 meta-proto 到上游返回结果 cost time: {} ms, 对应 requestId={}:{}, tcloudTraceId={}",
+            request_timer_->elapsed().count(), streamId(), requestId(), metadata_->getString("tcloudTraceId"));
 
   ASSERT(response_decoder_ == nullptr);
 
