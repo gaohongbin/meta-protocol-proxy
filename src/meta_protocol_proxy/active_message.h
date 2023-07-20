@@ -223,6 +223,7 @@ private:
 
   // This value is used in the calculation of the weighted cluster.
   uint64_t stream_id_;
+  // stream 主要用来记录一些额外信息，帮助 logging
   std::shared_ptr<StreamInfo::StreamInfo> stream_info_;
   Buffer::OwnedImpl response_buffer_;
 

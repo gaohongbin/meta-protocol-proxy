@@ -315,6 +315,7 @@ void ActiveMessage::onMessageDecoded(MetadataSharedPtr metadata, MutationSharedP
   // application protocol will be used to emit access log
   // Todo This may not be the best place to set application protocol for metadata, we better set it
   // at the decode machine
+  // ReservedHeaders::ApplicationProtocol = x-meta-protocol-application-protocol
   metadata->putString(ReservedHeaders::ApplicationProtocol,
                       connection_manager_.config().applicationProtocol());
 
