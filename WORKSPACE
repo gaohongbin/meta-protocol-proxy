@@ -17,13 +17,13 @@
 workspace(name = "meta_protocol_proxy")
 
 # http_archive is not a native function since bazel 0.19
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_istio_proxy",
-    strip_prefix = "proxy-1.14.5",
-    sha256 = "5f609018554bce88a48e2fcd0c6317ce19d79af031f33389c7916a1b9d91c88a",
-    url = "https://github.com/istio/proxy/archive/refs/tags/1.14.5.tar.gz",
+    strip_prefix = "proxy-1.16.6",
+    sha256 = "5ceb607d4b8c0e934ec647af3711837aa5c7dd877c16f615b152e48c4296fe73",
+    url = "https://github.com/istio/proxy/archive/refs/tags/1.16.6.tar.gz",
 )
 
 load(
@@ -46,10 +46,10 @@ bind(
 # 2. Update .bazelversion, envoy.bazelrc and .bazelrc if needed.
 #
 # Note: this is needed by release builder to resolve envoy dep sha to tag.
-# Commit date: 2022-08-18
-ENVOY_SHA = "fee1c20b5c0b168aef50a4455bb6bcc8869e6590"
+# Commit date: 2023-05-18
+ENVOY_SHA = "c84fa029500b6f06b3dfde6c3ea492218a7c781d"
 
-ENVOY_SHA256 = "782a886eb13f0a6002be820f2215540182610a9613bf4b93962422f3c7828d55"
+ENVOY_SHA256 = "afaaa63de402e3aed76982c05094f88042be5822d5d5e0034b0e9c88b4d9b2fa"
 
 ENVOY_ORG = "envoyproxy"
 
@@ -86,6 +86,10 @@ envoy_dependencies()
 load("@envoy//bazel:repositories_extra.bzl", "envoy_dependencies_extra")
 
 envoy_dependencies_extra()
+
+load("@envoy//bazel:python_dependencies.bzl", "envoy_python_dependencies")
+
+envoy_python_dependencies()
 
 load("@base_pip3//:requirements.bzl", "install_deps")
 

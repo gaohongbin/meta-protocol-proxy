@@ -178,6 +178,7 @@ void ThriftCodec::onError(const MetaProtocolProxy::Metadata& metadata,
   protocol_->writeMessageEnd(response_buffer);
 
   // 写入 frame
+  // frame process
   transport_->encodeFrame(buffer, msgMetadata, response_buffer);
 }
 
