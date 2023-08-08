@@ -35,7 +35,7 @@ ShadowRouterImpl::ShadowRouterImpl(ShadowWriterImpl& parent, const std::string& 
       decoder_(NullResponseDecoder(codec_factory.createCodec())) {}
 
 bool ShadowRouterImpl::createUpstreamRequest() {
-  auto prepare_result = prepareUpstreamRequest(cluster_name_, metadata_->getRequestId(), this);
+  auto prepare_result = prepareUpstreamRequest(cluster_name_, metadata_, this);
   if (prepare_result.exception.has_value()) {
     return false;
   }

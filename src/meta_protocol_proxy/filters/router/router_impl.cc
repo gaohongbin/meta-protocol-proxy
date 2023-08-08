@@ -110,7 +110,7 @@ FilterStatus Router::onMessageDecoded(MetadataSharedPtr request_metadata,
         *this, request_metadata_, request_mutation, get_upstream_handler_result.upstream_handler);
   } else {
     auto prepare_result =
-        prepareUpstreamRequest(cluster_name, request_metadata_->getRequestId(), this);
+        prepareUpstreamRequest(cluster_name, request_metadata_, this);
     if (prepare_result.exception.has_value()) {
       // emit access log
       emitLogEntry(request_metadata_, nullptr, static_cast<int>(ResponseStatus::Error),
