@@ -189,6 +189,7 @@ ENVOY_EXTENSIONS = {
     "envoy.tracers.xray":                               "//source/extensions/tracers/xray:config",
     "envoy.tracers.skywalking":                         "//source/extensions/tracers/skywalking:config",
     "envoy.tracers.opentelemetry":                      "//source/extensions/tracers/opentelemetry:config",
+    "envoy.tracers.tcloud":                             "//source/extensions/tracers/tcloud:config",
 
     #
     # Transport sockets
