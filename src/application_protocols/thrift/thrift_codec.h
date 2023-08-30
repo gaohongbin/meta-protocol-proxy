@@ -106,22 +106,22 @@ private:
    * and the number of remaining container elements.
    */
   struct Frame {
-    Frame(ProtocolState state) : return_state_(state), elem_type_{}, value_type_{}, remaining_(0) {}
+    Frame(ProtocolState state) : return_state_(state), elem_type_{}, value_type_{}, remaining_(0), field_id_(0) {}
 
     Frame(ProtocolState state, int16_t field_id) : return_state_(state), elem_type_{}, value_type_{}, remaining_(0), field_id_(field_id){}
 
     // 普通元素
     Frame(ProtocolState state, ThriftProxy::FieldType elem_type)
-        : return_state_(state), elem_type_(elem_type), value_type_{}, remaining_{} {}
+        : return_state_(state), elem_type_(elem_type), value_type_{}, remaining_{}, field_id_(0) {}
 
     // 针对 Set, List 等。
     Frame(ProtocolState state, ThriftProxy::FieldType elem_type, uint32_t remaining)
-        : return_state_(state), elem_type_(elem_type), value_type_{}, remaining_(remaining) {}
+        : return_state_(state), elem_type_(elem_type), value_type_{}, remaining_(remaining), field_id_(0) {}
 
     // 针对 Map
     Frame(ProtocolState state, ThriftProxy::FieldType key_type, ThriftProxy::FieldType value_type, uint32_t remaining)
         : return_state_(state), elem_type_(key_type), value_type_(value_type),
-          remaining_(remaining) {}
+          remaining_(remaining), field_id_(0) {}
 
     // 普通元素 + field_id
     Frame(ProtocolState state, ThriftProxy::FieldType elem_type, int16_t field_id)
@@ -150,7 +150,7 @@ private:
     uint32_t remaining_;
 
     // 保存 field id, 用来获取 tcloud trace
-    int16_t field_id_;
+    int16_t field_id_{0};
   };
 
   // These functions map directly to the matching ProtocolState values. Each returns the next state

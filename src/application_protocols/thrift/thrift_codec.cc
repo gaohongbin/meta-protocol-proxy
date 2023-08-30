@@ -29,6 +29,7 @@ MetaProtocolProxy::DecodeStatus ThriftCodec::decode(Buffer::Instance& data,
   if (!frame_started_) {
     // Look for start of next frame.
     if (!metadata_) {
+      ENVOY_LOG(debug, "thrift: ThriftCodec::decode 创建新的 metadata_");
       metadata_ = std::make_shared<ThriftProxy::MessageMetadata>();
     }
 
@@ -84,9 +85,12 @@ MetaProtocolProxy::DecodeStatus ThriftCodec::decode(Buffer::Instance& data,
     ENVOY_LOG(debug, "thrift: need more data for {} transport end", transport_->name());
     return DecodeStatus::WaitForData;
   }
+  ENVOY_LOG(debug, "test bug 3");
 
   // 将 metadata_ 的信息存储到 metadata 中。
   toMetadata(*metadata_, metadata);
+  ENVOY_LOG(debug, "test bug after toMetadata");
+
   ENVOY_LOG(debug, "request sequenceId={}, thrift: origin message length {} ", metadata.getRequestId(), metadata.originMessage().length());
 
   frame_ended_ = true;
@@ -184,43 +188,54 @@ void ThriftCodec::onError(const MetaProtocolProxy::Metadata& metadata,
 
 void ThriftCodec::toMetadata(const ThriftProxy::MessageMetadata& msgMetadata, Metadata& metadata) {
   // 存入 method
+  ENVOY_LOG(debug, "test bug 4");
   if (msgMetadata.hasMethodName()) {
     metadata.putString("method", msgMetadata.methodName());
   }
 
+  ENVOY_LOG(debug, "test bug 5");
   // 存入 RequestId
   if (msgMetadata.hasSequenceId()) {
     metadata.setRequestId(msgMetadata.sequenceId());
   }
 
+  ENVOY_LOG(debug, "test bug 6");
   // 存入 tcloudTraceId
   if (msgMetadata.hasTCloudTraceId()) {
     metadata.putString("tcloudTraceId", msgMetadata.tcloudTraceId());
   }
 
+  ENVOY_LOG(debug, "test bug 7");
   // 存入 MessageType
   ASSERT(msgMetadata.hasMessageType());
+  ENVOY_LOG(debug, "test bug hasMessageType, messageType = {}", int(msgMetadata.messageType()));
   switch (msgMetadata.messageType()) {
   case ThriftProxy::MessageType::Call: {
+    ENVOY_LOG(debug, "test bug 8");
     metadata.setMessageType(MessageType::Request);
     break;
   }
   case ThriftProxy::MessageType::Reply: {
+    ENVOY_LOG(debug, "test bug 9");
     metadata.setMessageType(MessageType::Response);
     break;
   }
   case ThriftProxy::MessageType::Oneway: {
+    ENVOY_LOG(debug, "test bug 10");
     metadata.setMessageType(MessageType::Oneway);
     break;
   }
   case ThriftProxy::MessageType::Exception: {
+    ENVOY_LOG(debug, "test bug 11");
     metadata.setMessageType(MessageType::Error);
     break;
   }
   default:
+    ENVOY_LOG(debug, "test bug 12");
     PANIC("not reachec");
   }
 
+  ENVOY_LOG(debug, "test bug 13");
   // 将第三个参数的内容存入到第一个参数中，并且在第一个参数中，新增 size 字段。
   transport_->encodeFrame(metadata.originMessage(), msgMetadata, state_machine_->originalMessage());
 }
@@ -547,15 +562,17 @@ ProtocolState DecoderStateMachine::handleValue(Buffer::Instance& buffer,
     std::string value;
     if (proto_.readString(buffer, value)) {
       // 这里获取到 trace_context 的 key
-      ENVOY_LOG(debug, "解析出来的 string value = {}, 此时 field_id = {}", value, field_id);
-      if (field_id == int16_t(11111) && return_state == ProtocolState::MapValue && Http::LowerCaseString(value).get() == "twl-span-context") {
+      ENVOY_LOG(debug, "解析出来的 string value = {}, 此时 field_id = {}, return_state = {}", value, field_id, ProtocolStateNameValues::name(return_state));
+      if (field_id == int16_t(11111) && return_state == ProtocolState::MapValue && !value.empty() && Http::LowerCaseString(value).get() == "twl-span-context") {
         get_tcloud_trace_context_ = true;
       }
+      ENVOY_LOG(debug, "test bug 1");
       // 这里判断获取到 trace_context 的 value
       if (get_tcloud_trace_context_ && return_state == ProtocolState::MapKey) {
         tcloud_trace_context_ = value;
         get_tcloud_trace_context_ = false;
       }
+      ENVOY_LOG(debug, "test bug 2");
       // 继续原逻辑
       proto_.writeString(origin_message_, value);
       return return_state;

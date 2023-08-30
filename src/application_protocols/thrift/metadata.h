@@ -10,6 +10,7 @@
 
 #include "source/common/common/macros.h"
 #include "source/common/http/header_map_impl.h"
+#include "source/common/common/logger.h"
 #include "src/application_protocols/thrift/thrift.h"
 #include "src/application_protocols/thrift/tracing.h"
 
@@ -26,7 +27,7 @@ namespace ThriftProxy {
  * otherwise noted, accessor methods throw absl::bad_optional_access if the corresponding value has
  * not been set.
  */
-class MessageMetadata {
+class MessageMetadata : public Logger::Loggable<Logger::Id::thrift>{
 public:
   MessageMetadata() = default;
 
@@ -128,9 +129,18 @@ public:
   int32_t sequenceId() const { return seq_id_.value(); }
   void setSequenceId(int32_t seq_id) { seq_id_ = seq_id; }
 
-  bool hasMessageType() const { return msg_type_.has_value(); }
-  MessageType messageType() const { return msg_type_.value(); }
-  void setMessageType(MessageType msg_type) { msg_type_ = msg_type; }
+  bool hasMessageType() const {
+    ENVOY_LOG(debug, "test bug hasMessageType");
+    return msg_type_.has_value();
+  }
+  MessageType messageType() const {
+    ENVOY_LOG(debug, "test bug messageType()");
+    return msg_type_.value();
+  }
+  void setMessageType(MessageType msg_type) {
+    ENVOY_LOG(debug, "test bug setMessageType()");
+    msg_type_ = msg_type;
+  }
 
   bool hasReplyType() const { return reply_type_.has_value(); }
   ReplyType replyType() const { return reply_type_.value(); }
