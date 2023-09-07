@@ -105,7 +105,7 @@ void MetadataImpl::setByReference(absl::string_view key, absl::string_view val) 
   putString(std::string(key.data(), key.length()), std::string(val.data(), val.length()));
 };
 
-size_t MetadataImpl::removeByKey(absl::string_view key) {
+void MetadataImpl::removeByKey(absl::string_view key) {
   auto lowcase_key = Http::LowerCaseString(key);
   headers_->remove(lowcase_key);
 };

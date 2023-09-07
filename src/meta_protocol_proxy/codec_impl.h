@@ -69,7 +69,7 @@ public:
   void setByKey(absl::string_view key, absl::string_view val) override;
   void setByReferenceKey(absl::string_view key, absl::string_view val) override;
   void setByReference(absl::string_view key, absl::string_view val) override;
-  size_t removeByKey(absl::string_view key) override;
+  void removeByKey(absl::string_view key) override;
 
 private:
   const std::string* getStringPointer(std::string key) const;
