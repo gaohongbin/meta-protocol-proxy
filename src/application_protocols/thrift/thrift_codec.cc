@@ -583,7 +583,7 @@ ProtocolState DecoderStateMachine::handleValue(Buffer::Instance& buffer,
   case ThriftProxy::FieldType::Struct:
     stack_.emplace_back(Frame(return_state));
     return ProtocolState::StructBegin;
-  // 如果 field 是一个 Map, 前面我们知道 stack_ 已经插入了一个 fieldEnd 了, 这里又插入了一个 fieldEnd
+  // 如果 field 是一个 Map, 前面我们知道 stack_ ,
   case ThriftProxy::FieldType::Map:
     stack_.emplace_back(Frame(return_state, field_id));
     return ProtocolState::MapBegin;
