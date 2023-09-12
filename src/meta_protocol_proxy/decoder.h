@@ -147,6 +147,8 @@ public:
 
   ActiveStream* newStream(MetadataSharedPtr metadata, MutationSharedPtr mutation) override {
     ASSERT(!stream_);
+    // request 从 connManager 过来的，这里 callbacks 就是 connManager 自身。
+    // 在 connManager 中 newMessageHandler 方法返回的是 ActiveMessage
     stream_ = std::make_unique<ActiveStream>(callbacks_.newMessageHandler(), metadata, mutation);
     return stream_.get();
   }

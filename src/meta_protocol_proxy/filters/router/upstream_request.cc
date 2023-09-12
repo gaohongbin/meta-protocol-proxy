@@ -30,10 +30,14 @@ UpstreamRequest::UpstreamRequest(RequestOwner& parent, Upstream::TcpPoolData& po
     : UpstreamRequestBase(parent, metadata, mutation), conn_pool_(pool) {}
 
 FilterStatus UpstreamRequest::start() {
+  // 这里通过调用连接池的 newConnection 方法, 获取 conn
+  // 并将 UpstreamRequest 自身作为 callback 传入 newConnection 方法。
+  // 如果 handle != null, 则返回的是 pendingStream
   Tcp::ConnectionPool::Cancellable* handle = conn_pool_.newConnection(*this);
   if (handle) {
     ENVOY_LOG(debug, "UpstreamRequest::start() PauseIteration tcloudTraceId={}", metadata_->getString("tcloudTraceId"));
     // Pause while we wait for a connection.
+    // 暂停等待连接
     conn_pool_handle_ = handle;
     return FilterStatus::PauseIteration;
   }
@@ -133,6 +137,11 @@ void UpstreamRequest::onPoolFailure(ConnectionPool::PoolFailureReason reason, ab
   }
 }
 
+void UpstreamRequest::onRequestComplete() {
+  request_complete_ = true;
+  // todo
+}
+
 void UpstreamRequest::onPoolReady(Tcp::ConnectionPool::ConnectionDataPtr&& conn_data,
                                   Upstream::HostDescriptionConstSharedPtr host) {
   ENVOY_LOG(debug, "meta protocol upstream request: tcp connection is ready");
@@ -146,6 +155,8 @@ void UpstreamRequest::onPoolReady(Tcp::ConnectionPool::ConnectionDataPtr&& conn_
   host->outlierDetector().putResult(Upstream::Outlier::Result::LocalOriginConnectSuccess);
 
   conn_data_ = std::move(conn_data);
+  // 这里 parent_.upstreamCallbacks() 是 router 的 upstreamCallbacks
+  // todo 什么时候触发这个 callback 后面看
   if (metadata_->getMessageType() == MessageType::Request) {
     conn_data_->addUpstreamCallbacks(parent_.upstreamCallbacks());
   }
@@ -281,6 +292,11 @@ void UpstreamRequestByHandler::onPoolReady(Upstream::HostDescriptionConstSharedP
   encodeData(upstream_request_buffer_);
 
   onRequestComplete();
+}
+
+void UpstreamRequestByHandler::onRequestComplete() {
+  request_complete_ = true;
+  // todo
 }
 
 FilterStatus UpstreamRequestByHandler::start() {

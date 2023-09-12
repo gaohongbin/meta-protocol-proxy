@@ -7,8 +7,10 @@ namespace NetworkFilters {
 namespace MetaProtocolProxy {
 
 ProtocolState DecoderStateMachine::onDecodeStream(Buffer::Instance& buffer) {
+
   auto metadata = std::make_shared<MetadataImpl>();
   metadata->setMessageType(messageType_);
+  // 通过状态机进行解码
   auto decodeStatus = codec_.decode(buffer, *metadata);
   if (decodeStatus == DecodeStatus::WaitForData) {
     return ProtocolState::WaitForData;
@@ -24,7 +26,9 @@ ProtocolState DecoderStateMachine::onDecodeStream(Buffer::Instance& buffer) {
     return ProtocolState::Done;
   }
 
+  // 初始化 active_stream_
   auto mutation = std::make_shared<Mutation>();
+  // 初始化 ActiveStream
   auto active_stream_ = delegate_.newStream(metadata, mutation);
   ASSERT(active_stream_);
   active_stream_->onStreamDecoded();

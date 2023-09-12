@@ -42,6 +42,7 @@ Network::FilterStatus ConnectionManager::onData(Buffer::Instance& data, bool end
   return Network::FilterStatus::StopIteration;
 }
 
+// connManager 的初始化
 Network::FilterStatus ConnectionManager::onNewConnection() {
   // init idle timer.
   if (config_.idleTimeout()) {
@@ -52,6 +53,7 @@ Network::FilterStatus ConnectionManager::onNewConnection() {
   return Network::FilterStatus::Continue;
 }
 
+// 其实这里 callbacks 是 connManager 自身。
 void ConnectionManager::initializeReadFilterCallbacks(Network::ReadFilterCallbacks& callbacks) {
   read_callbacks_ = &callbacks;
   read_callbacks_->connection().addConnectionCallbacks(*this);
@@ -59,16 +61,21 @@ void ConnectionManager::initializeReadFilterCallbacks(Network::ReadFilterCallbac
   read_callbacks_->connection().setBufferLimits(BufferLimit);
 }
 
+// 这里也只看到处理了自身的一些逻辑，并没有看到通知 ClientConn 的逻辑。
 void ConnectionManager::onEvent(Network::ConnectionEvent event) {
   ENVOY_LOG(debug, "ConnectionManager onEvent {}", static_cast<int>(event));
   if (event == Network::ConnectionEvent::LocalClose) {
     disableIdleTimer();
     resetAllMessages(true);
+    clearStream();
     resetUpstreamHandlerManager();
+    read_callbacks_->connection().close(Network::ConnectionCloseType::NoFlush);
   } else if (event == Network::ConnectionEvent::RemoteClose) {
     disableIdleTimer();
     resetAllMessages(false);
+    clearStream();
     resetUpstreamHandlerManager();
+    read_callbacks_->connection().close(Network::ConnectionCloseType::NoFlush);
   }
 }
 
@@ -112,6 +119,7 @@ void ConnectionManager::dispatch() {
     return;
   }
   // when data is not empty,it will enable timer again.
+  // 重置计时器
   resetIdleTimer();
   try {
     bool underflow = false;
@@ -120,6 +128,11 @@ void ConnectionManager::dispatch() {
     // buffer contains part of the incomplete message.
     // 2. all the messages in the buffer have been processed, in this case, the buffer is already
     // empty.
+
+    // 解码器在以下两种情况下返回 underflow：
+    // 1.解码器需要更多的数据来完成当前消息的解码，此时，
+    // 缓冲区包含部分不完整消息。
+    // 2. 缓冲区中的所有消息均已处理完毕，此时缓冲区已为空。
     while (!underflow) {
       decoder_->onData(request_buffer_, underflow);
     }
@@ -129,6 +142,7 @@ void ConnectionManager::dispatch() {
     read_callbacks_->connection().close(Network::ConnectionCloseType::NoFlush);
     stats_.request_decoding_error_.inc();
   }
+  // 这个只有在 catch 之后才会执行
   resetAllMessages(true);
 }
 
@@ -215,11 +229,15 @@ void ConnectionManager::resetAllMessages(bool local_reset) {
   }
 }
 
+// 超时后的处理逻辑
+// 这里我们看到只处理了 ServerConnection, 而并没有针对 ClientConnection 做任何处理。
+// 带着这个问题我们继续往下看。
 void ConnectionManager::onIdleTimeout() {
   ENVOY_CONN_LOG(debug, "meta protocol:Session timed out", read_callbacks_->connection());
   stats_.idle_timeout_.inc();
   resetAllMessages(true);
   clearStream();
+  resetUpstreamHandlerManager();
   read_callbacks_->connection().close(Network::ConnectionCloseType::NoFlush);
 }
 

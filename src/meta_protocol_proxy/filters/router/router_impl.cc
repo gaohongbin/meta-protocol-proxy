@@ -119,15 +119,19 @@ FilterStatus Router::onMessageDecoded(MetadataSharedPtr request_metadata,
       decoder_filter_callbacks_->sendLocalReply(prepare_result.exception.value(), false);
       return FilterStatus::AbortIteration;
     }
+    // 获取 cluster 对应的连接池
     auto& conn_pool_data = prepare_result.conn_pool_data.value();
+    // 目前看这里只是创建了一个 UpstreamRequest 实例, 再往下看看
     upstream_request_ = std::make_unique<UpstreamRequest>(*this, conn_pool_data, request_metadata_,
                                                           request_mutation);
   }
 
+  // todo 是不是可以在 ServerConn 被 close 后, 通过 decoder_filter_callbacks_ 来关闭 ClientConn ?
   decoder_filter_callbacks_->streamInfo().setUpstreamClusterInfo(cluster_);
   ENVOY_STREAM_LOG(debug, "meta protocol router: decoding request", *decoder_filter_callbacks_);
   ENVOY_STREAM_LOG(debug, "meta protocol router: decoding request {}, tcloudTraceId={}", *decoder_filter_callbacks_, request_metadata_->getRequestId(), request_metadata_->getString("tcloudTraceId"));
 
+  // 这里就 start 了
   auto filter_status = upstream_request_->start();
   ENVOY_LOG(debug, "UpstreamRequest 调用完成, tcloudTraceId={}", request_metadata_->getString("tcloudTraceId"));
 
