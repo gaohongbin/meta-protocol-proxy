@@ -137,10 +137,10 @@ void UpstreamRequest::onPoolFailure(ConnectionPool::PoolFailureReason reason, ab
   }
 }
 
-void UpstreamRequest::onRequestComplete() {
-  request_complete_ = true;
-  // todo
-}
+//void UpstreamRequest::onRequestComplete() {
+//  request_complete_ = true;
+//  // todo
+//}
 
 void UpstreamRequest::onPoolReady(Tcp::ConnectionPool::ConnectionDataPtr&& conn_data,
                                   Upstream::HostDescriptionConstSharedPtr host) {
@@ -294,10 +294,10 @@ void UpstreamRequestByHandler::onPoolReady(Upstream::HostDescriptionConstSharedP
   onRequestComplete();
 }
 
-void UpstreamRequestByHandler::onRequestComplete() {
-  request_complete_ = true;
-  // todo
-}
+//void UpstreamRequestByHandler::onRequestComplete() {
+//  request_complete_ = true;
+//  // todo
+//}
 
 FilterStatus UpstreamRequestByHandler::start() {
   if (upstream_handler_->isPoolReady()) {
