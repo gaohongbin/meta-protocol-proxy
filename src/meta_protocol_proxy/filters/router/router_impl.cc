@@ -20,7 +20,7 @@ void Router::onDestroy() {
   // be more data coming later on the connection after destroying the router
   if (!upstreamRequestFinished()) {
     upstream_request_->releaseUpStreamConnection(
-        false); // todo: should be true, but we get segment fault in rare case
+        true); // todo: should be true, but we get segment fault in rare case
   }
   cleanUpstreamRequest();
 }
