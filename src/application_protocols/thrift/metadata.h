@@ -32,6 +32,7 @@ public:
   MessageMetadata() = default;
 
   std::shared_ptr<MessageMetadata> clone() const {
+    ENVOY_LOG(debug, "test bug clone");
     auto copy = std::make_shared<MessageMetadata>();
 
     if (hasFrameSize()) {

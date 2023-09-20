@@ -166,24 +166,36 @@ void ThriftCodec::onError(const MetaProtocolProxy::Metadata& metadata,
   Buffer::OwnedImpl response_buffer;
 
   protocol_->writeMessageBegin(response_buffer, msgMetadata);
+  ENVOY_LOG(debug, "ThriftCodec::onError writeMessageBegin");
   protocol_->writeStructBegin(response_buffer, TApplicationException);
+  ENVOY_LOG(debug, "ThriftCodec::onError writeStructBegin");
 
   protocol_->writeFieldBegin(response_buffer, MessageField, ThriftProxy::FieldType::String, 1);
+  ENVOY_LOG(debug, "ThriftCodec::onError writeFieldBegin 1");
   protocol_->writeString(response_buffer, error.message);
+  ENVOY_LOG(debug, "ThriftCodec::onError writeString 1");
   protocol_->writeFieldEnd(response_buffer);
+  ENVOY_LOG(debug, "ThriftCodec::onError writeFieldEnd 1");
 
   protocol_->writeFieldBegin(response_buffer, TypeField, ThriftProxy::FieldType::I32, 2);
+  ENVOY_LOG(debug, "ThriftCodec::onError writeFieldBegin 2");
   protocol_->writeInt32(response_buffer, static_cast<int32_t>(ThriftProxy::AppExceptionType::InternalError));
+  ENVOY_LOG(debug, "ThriftCodec::onError writeInt32 2");
   protocol_->writeFieldEnd(response_buffer);
+  ENVOY_LOG(debug, "ThriftCodec::onError writeFieldEnd 2");
 
   protocol_->writeFieldBegin(response_buffer, StopField, ThriftProxy::FieldType::Stop, 0);
+  ENVOY_LOG(debug, "ThriftCodec::onError writeFieldBegin 0");
 
   protocol_->writeStructEnd(response_buffer);
+  ENVOY_LOG(debug, "ThriftCodec::onError writeStructEnd");
   protocol_->writeMessageEnd(response_buffer);
+  ENVOY_LOG(debug, "ThriftCodec::onError writeMessageEnd");
 
   // 写入 frame
   // frame process
   transport_->encodeFrame(buffer, msgMetadata, response_buffer);
+  ENVOY_LOG(debug, "ThriftCodec::onError encodeFrame");
 }
 
 void ThriftCodec::toMetadata(const ThriftProxy::MessageMetadata& msgMetadata, Metadata& metadata) {
