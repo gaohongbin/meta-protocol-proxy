@@ -67,15 +67,15 @@ void ConnectionManager::onEvent(Network::ConnectionEvent event) {
   if (event == Network::ConnectionEvent::LocalClose) {
     disableIdleTimer();
     resetAllMessages(true);
-    clearStream();
+    // clearStream();
     resetUpstreamHandlerManager();
-    read_callbacks_->connection().close(Network::ConnectionCloseType::NoFlush);
+    // read_callbacks_->connection().close(Network::ConnectionCloseType::NoFlush);
   } else if (event == Network::ConnectionEvent::RemoteClose) {
     disableIdleTimer();
     resetAllMessages(false);
-    clearStream();
+    // clearStream();
     resetUpstreamHandlerManager();
-    read_callbacks_->connection().close(Network::ConnectionCloseType::NoFlush);
+    // read_callbacks_->connection().close(Network::ConnectionCloseType::NoFlush);
   }
 }
 
@@ -237,7 +237,7 @@ void ConnectionManager::onIdleTimeout() {
   stats_.idle_timeout_.inc();
   resetAllMessages(true);
   clearStream();
-  resetUpstreamHandlerManager();
+  // resetUpstreamHandlerManager();
   read_callbacks_->connection().close(Network::ConnectionCloseType::NoFlush);
 }
 
