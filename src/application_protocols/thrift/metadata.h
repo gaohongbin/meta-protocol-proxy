@@ -113,9 +113,19 @@ public:
   ProtocolType protocol() const { return proto_.value(); }
   void setProtocol(ProtocolType proto) { proto_ = proto; }
 
-  bool hasMethodName() const { return method_name_.has_value(); }
-  const std::string& methodName() const { return method_name_.value(); }
-  void setMethodName(const std::string& method_name) { method_name_ = method_name; }
+  bool hasMethodName() const {
+    ENVOY_LOG(debug, "test bug hasMethodName()");
+    return method_name_.has_value();
+  }
+
+  const std::string& methodName() const {
+    ENVOY_LOG(debug, "test bug methodName()");
+    return method_name_.value();
+  }
+  void setMethodName(const std::string& method_name) {
+    ENVOY_LOG(debug, "test bug setMethodName()");
+    method_name_ = method_name;
+  }
 
   // 自定义 traceId
   bool hasTCloudTraceId() const { return tcloud_trace_id_.has_value(); }
@@ -126,9 +136,18 @@ public:
   int16_t headerFlags() const { return header_flags_.value(); }
   void setHeaderFlags(int16_t header_flags) { header_flags_ = header_flags; }
 
-  bool hasSequenceId() const { return seq_id_.has_value(); }
-  int32_t sequenceId() const { return seq_id_.value(); }
-  void setSequenceId(int32_t seq_id) { seq_id_ = seq_id; }
+  bool hasSequenceId() const {
+    ENVOY_LOG(debug, "test bug hasSequenceId()");
+    return seq_id_.has_value();
+  }
+  int32_t sequenceId() const {
+    ENVOY_LOG(debug, "test bug sequenceId()");
+    return seq_id_.value();
+  }
+  void setSequenceId(int32_t seq_id) {
+    ENVOY_LOG(debug, "test bug setSequenceId()");
+    seq_id_ = seq_id;
+  }
 
   bool hasMessageType() const {
     ENVOY_LOG(debug, "test bug hasMessageType");
