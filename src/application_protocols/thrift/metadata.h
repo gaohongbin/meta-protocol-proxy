@@ -131,7 +131,8 @@ public:
     if (method_name_.has_value()) {
       return method_name_.value();
     } else {
-      return "";
+      method_name_ = "";
+      return method_name_.value();
     }
     // return method_name_.value();
   }
