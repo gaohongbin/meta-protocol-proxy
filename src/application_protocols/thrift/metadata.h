@@ -128,12 +128,7 @@ public:
 
   const std::string& methodName() const {
     ENVOY_LOG(debug, "test bug methodName() meta has_value = {}", method_name_.has_value());
-    if (method_name_.has_value()) {
-      return method_name_.value();
-    } else {
-      method_name_ = "";
-      return method_name_.value();
-    }
+    return method_name_.value();
     // return method_name_.value();
   }
   void setMethodName(const std::string& method_name) {
