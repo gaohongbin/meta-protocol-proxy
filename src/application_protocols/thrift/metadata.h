@@ -106,7 +106,15 @@ public:
   }
 
   bool hasFrameSize() const { return frame_size_.has_value(); }
-  uint32_t frameSize() const { return frame_size_.value(); }
+  uint32_t frameSize() const {
+    ENVOY_LOG(debug, "test bug frameSize() meta = {}", frame_size_.has_value());
+    if (frame_size_.has_value()) {
+      return frame_size_.value();
+    } else {
+      return uint32_t(0);
+    }
+    // return frame_size_.value();
+  }
   void setFrameSize(uint32_t size) { frame_size_ = size; }
 
   bool hasProtocol() const { return proto_.has_value(); }
@@ -119,8 +127,13 @@ public:
   }
 
   const std::string& methodName() const {
-    ENVOY_LOG(debug, "test bug methodName()");
-    return method_name_.value();
+    ENVOY_LOG(debug, "test bug methodName() meta has_value = {}", method_name_.has_value());
+    if (method_name_.has_value()) {
+      return method_name_.value();
+    } else {
+      return std::string("");
+    }
+    // return method_name_.value();
   }
   void setMethodName(const std::string& method_name) {
     ENVOY_LOG(debug, "test bug setMethodName()");
@@ -133,7 +146,15 @@ public:
   void setTCloudTraceId(const std::string& tcloud_trace_id) { tcloud_trace_id_ = tcloud_trace_id; }
 
   bool hasHeaderFlags() const { return header_flags_.has_value(); }
-  int16_t headerFlags() const { return header_flags_.value(); }
+  int16_t headerFlags() const {
+    ENVOY_LOG(debug, "test bug headerFlags() meta has_value = {}", header_flags_.has_value());
+    if (header_flags_.has_value()) {
+      return header_flags_.value();
+    } else {
+      return int16_t(0);
+    }
+    // return header_flags_.value();
+  }
   void setHeaderFlags(int16_t header_flags) { header_flags_ = header_flags; }
 
   bool hasSequenceId() const {
@@ -157,12 +178,18 @@ public:
   }
 
   bool hasMessageType() const {
-    ENVOY_LOG(debug, "test bug hasMessageType");
+    ENVOY_LOG(debug, "test bug hasMessageType meta = {}", msg_type_.has_value());
     return msg_type_.has_value();
   }
   MessageType messageType() const {
-    ENVOY_LOG(debug, "test bug messageType()");
-    return msg_type_.value();
+    ENVOY_LOG(debug, "test bug messageType() meta has_value = {}", msg_type_.has_value());
+    if (msg_type_.has_value()) {
+      return msg_type_.value();
+    } else {
+      return MessageType::Exception;
+    }
+    // ENVOY_LOG(debug, "test bug messageType()");
+    // return msg_type_.value();
   }
   void setMessageType(MessageType msg_type) {
     ENVOY_LOG(debug, "test bug setMessageType()");
