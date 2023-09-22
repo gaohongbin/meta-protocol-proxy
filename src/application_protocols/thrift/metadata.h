@@ -137,16 +137,17 @@ public:
   void setHeaderFlags(int16_t header_flags) { header_flags_ = header_flags; }
 
   bool hasSequenceId() const {
-    ENVOY_LOG(debug, "test bug hasSequenceId()");
+    ENVOY_LOG(debug, "test bug hasSequenceId() {}", seq_id_.value());
     return seq_id_.has_value();
   }
   int32_t sequenceId() const {
-    ENVOY_LOG(debug, "test bug sequenceId()");
+    ENVOY_LOG(debug, "test bug sequenceId() {}", seq_id_.value());
     return seq_id_.value();
   }
   void setSequenceId(int32_t seq_id) {
-    ENVOY_LOG(debug, "test bug setSequenceId()");
+    ENVOY_LOG(debug, "test bug setSequenceId() before seq_id = {}", seq_id);
     seq_id_ = seq_id;
+    ENVOY_LOG(debug, "test bug setSequenceId() after seq_id_ = {}", seq_id_.value());
   }
 
   bool hasMessageType() const {
