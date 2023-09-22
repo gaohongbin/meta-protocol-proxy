@@ -131,7 +131,7 @@ public:
     if (method_name_.has_value()) {
       return method_name_.value();
     } else {
-      return std::string("");
+      return "";
     }
     // return method_name_.value();
   }
