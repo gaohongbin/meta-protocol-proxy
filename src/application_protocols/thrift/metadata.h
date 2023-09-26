@@ -154,11 +154,13 @@ public:
   void setHeaderFlags(int16_t header_flags) { header_flags_ = header_flags; }
 
   bool hasSequenceId() const {
+    ENVOY_LOG(debug, "test bug hasSequenceId() meta");
     return true;
 //    ENVOY_LOG(debug, "test bug hasSequenceId() {}", seq_id_.has_value());
 //    return seq_id_.has_value();
   }
   int32_t sequenceId() const {
+    ENVOY_LOG(debug, "test bug sequenceId() meta {}", seq_id_);
     return seq_id_;
 //    if (seq_id_.has_value()) {
 //      ENVOY_LOG(debug, "test bug sequenceId() if {}", seq_id_.value());
@@ -170,9 +172,9 @@ public:
     // return seq_id_.value();
   }
   void setSequenceId(int32_t seq_id) {
-    ENVOY_LOG(debug, "test bug setSequenceId() before seq_id = {}", seq_id);
+    ENVOY_LOG(debug, "test bug setSequenceId() meta before seq_id = {}", seq_id);
     seq_id_ = seq_id;
-    ENVOY_LOG(debug, "test bug setSequenceId() after seq_id_ = {}", seq_id_);
+    ENVOY_LOG(debug, "test bug setSequenceId() meta after seq_id_ = {}", seq_id_);
   }
 
   bool hasMessageType() const {
@@ -254,6 +256,7 @@ private:
   absl::optional<std::string> method_name_{};
   absl::optional<std::string> tcloud_trace_id_{};
   absl::optional<int16_t> header_flags_{};
+  // todo 写成 absl::optional 容易出现问题, 所以改成 int32_t
   int32_t seq_id_{0};
   absl::optional<MessageType> msg_type_{};
   absl::optional<ReplyType> reply_type_{};
