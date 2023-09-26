@@ -154,23 +154,25 @@ public:
   void setHeaderFlags(int16_t header_flags) { header_flags_ = header_flags; }
 
   bool hasSequenceId() const {
-    ENVOY_LOG(debug, "test bug hasSequenceId() {}", seq_id_.has_value());
-    return seq_id_.has_value();
+    return true;
+//    ENVOY_LOG(debug, "test bug hasSequenceId() {}", seq_id_.has_value());
+//    return seq_id_.has_value();
   }
   int32_t sequenceId() const {
-    if (seq_id_.has_value()) {
-      ENVOY_LOG(debug, "test bug sequenceId() if {}", seq_id_.value());
-      return seq_id_.value();
-    } else {
-      ENVOY_LOG(debug, "test bug sequenceId() else");
-      return int32_t(0);
-    }
+    return seq_id_;
+//    if (seq_id_.has_value()) {
+//      ENVOY_LOG(debug, "test bug sequenceId() if {}", seq_id_.value());
+//      return seq_id_.value();
+//    } else {
+//      ENVOY_LOG(debug, "test bug sequenceId() else");
+//      return int32_t(0);
+//    }
     // return seq_id_.value();
   }
   void setSequenceId(int32_t seq_id) {
     ENVOY_LOG(debug, "test bug setSequenceId() before seq_id = {}", seq_id);
     seq_id_ = seq_id;
-    ENVOY_LOG(debug, "test bug setSequenceId() after seq_id_ = {}", seq_id_.value());
+    ENVOY_LOG(debug, "test bug setSequenceId() after seq_id_ = {}", seq_id_);
   }
 
   bool hasMessageType() const {
@@ -252,7 +254,7 @@ private:
   absl::optional<std::string> method_name_{};
   absl::optional<std::string> tcloud_trace_id_{};
   absl::optional<int16_t> header_flags_{};
-  absl::optional<int32_t> seq_id_{};
+  int32_t seq_id_{0};
   absl::optional<MessageType> msg_type_{};
   absl::optional<ReplyType> reply_type_{};
   Http::HeaderMapPtr headers_{Http::RequestHeaderMapImpl::create()};
