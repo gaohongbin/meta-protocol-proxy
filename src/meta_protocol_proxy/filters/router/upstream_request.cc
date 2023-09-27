@@ -92,7 +92,7 @@ void UpstreamRequest::releaseUpStreamConnection(bool close) {
   ENVOY_LOG(debug, "meta protocol upstream request: release upstream connection");
   // 增加 conn_data->connection() 判断
   if (close && conn_data != nullptr) {
-      auto conn =  conn_data->connection();
+      conn_data->connection();
       ENVOY_LOG(debug, "meta protocol upstream request: 判断是否 connection() 报错");
       // we shouldn't close the upstream connection unless explicitly asked at some exceptional cases
       conn_data->connection().close(Network::ConnectionCloseType::NoFlush);
