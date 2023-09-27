@@ -96,7 +96,7 @@ void UpstreamRequest::releaseUpStreamConnection(bool close) {
       // we shouldn't close the upstream connection unless explicitly asked at some exceptional cases
       conn_data->connection().close(Network::ConnectionCloseType::NoFlush);
       ENVOY_LOG(warn, "meta protocol upstream request: close upstream connection");
-    } catch (const Exception& ex) {
+    } catch (const EnvoyException& ex) {
       ENVOY_LOG(error, "meta protocol error: {}", ex.what());
     }
   }
