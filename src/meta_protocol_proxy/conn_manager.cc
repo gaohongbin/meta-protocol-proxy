@@ -205,6 +205,7 @@ void ConnectionManager::closeStream(uint64_t stream_id) {
   active_stream_map_.erase(stream_id);
 }
 
+// todo 这里没看懂
 void ConnectionManager::deferredDeleteMessage(ActiveMessage& message) {
   if (!message.inserted()) {
     return;
