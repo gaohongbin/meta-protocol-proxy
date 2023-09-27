@@ -90,10 +90,13 @@ void UpstreamRequest::releaseUpStreamConnection(bool close) {
   // will cause segment fault
   Tcp::ConnectionPool::ConnectionDataPtr conn_data = std::move(conn_data_);
   ENVOY_LOG(debug, "meta protocol upstream request: release upstream connection");
+  // 增加 conn_data->connection() 判断
   if (close && conn_data != nullptr) {
-    // we shouldn't close the upstream connection unless explicitly asked at some exceptional cases
-    conn_data->connection().close(Network::ConnectionCloseType::NoFlush);
-    ENVOY_LOG(warn, "meta protocol upstream request: close upstream connection");
+      auto conn =  conn_data->connection();
+      ENVOY_LOG(debug, "meta protocol upstream request: 判断是否 connection() 报错");
+      // we shouldn't close the upstream connection unless explicitly asked at some exceptional cases
+      conn_data->connection().close(Network::ConnectionCloseType::NoFlush);
+      ENVOY_LOG(warn, "meta protocol upstream request: close upstream connection");
   }
 }
 
