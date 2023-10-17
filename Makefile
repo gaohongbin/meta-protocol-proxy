@@ -17,7 +17,7 @@ CC := clang-10
 CXX := clang++-10
 PATH := /home/ubuntu/clang+llvm-10.0.0-linux-gnu/bin:$(PATH)
 
-BAZEL_CONFIG = -s --sandbox_debug --verbose_failures --verbose_explanations --explain=build.log --host_force_python=PY3 --override_repository=envoy=/Users/admin/c/tcloud_envoy/envoy
+BAZEL_CONFIG = -s --sandbox_debug --verbose_failures --verbose_explanations --explain=build.log --host_force_python=PY3 --override_repository=envoy=/Users/admin/c/tcloud_envoy/envoy --override_repository=io_istio_proxy=/Users/admin/c/istio-proxy
 BAZEL_CONFIG_DEV  = $(BAZEL_CONFIG) --config=libc++
 BAZEL_CONFIG_REL  = $(BAZEL_CONFIG_DEV) --config=release
 BAZEL_TARGETS = envoy
@@ -42,6 +42,6 @@ api:
 	bazel build //api/meta_protocol_proxy/config/route/v1alpha:pkg_go_proto
 
 clean:
-	@bazel clean
 
+	@bazel clean
 .PHONY: build clean api
