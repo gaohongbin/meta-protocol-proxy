@@ -16,6 +16,7 @@ envoy_cc_binary(
 	"@io_istio_proxy//extensions/access_log_policy:access_log_policy_lib",
         "@io_istio_proxy//extensions/attributegen:attributegen_plugin",
         "@io_istio_proxy//extensions/metadata_exchange:metadata_exchange_lib",
+        "@io_istio_proxy//extensions/key_rate_limit:key_rate_limit_lib",
         "@io_istio_proxy//extensions/stackdriver:stackdriver_plugin",
         "@io_istio_proxy//extensions/stats:stats_plugin",
         "@io_istio_proxy//source/extensions/filters/http/alpn:config_lib",
