@@ -1,0 +1,7 @@
+domain: production
+descriptors:
+  - key: method
+    value: "sayHello"
+    rate_limit:
+      unit: minute
+      requests_per_unit: 5

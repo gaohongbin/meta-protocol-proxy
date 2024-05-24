@@ -1,0 +1,23 @@
+version: "3"
+services:
+  redis:
+    network_mode: "host"
+    image: redis:alpine
+
+  ratelimit:
+    network_mode: "host"
+    image: envoyproxy/ratelimit:master
+    command: /bin/ratelimit
+    depends_on:
+      - redis
+    volumes:
+      - ./config:/data/ratelimit/config
+    environment:
+      - USE_STATSD=false
+      - LOG_LEVEL=debug
+      - REDIS_SOCKET_TYPE=tcp
+      - REDIS_URL=127.0.0.1:6379
+      - RUNTIME_ROOT=/data
+      - RUNTIME_SUBDIRECTORY=ratelimit
+      - RUNTIME_WATCH_ROOT=false
+
